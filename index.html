@@ -1,13 +1,403 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>OncoVida</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Mi Bienestar" />
+  <meta name="theme-color" content="#2563EB" />
+  <title>Mi Bienestar</title>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; font-family: -apple-system, 'Inter', system-ui, sans-serif; }
+    body { background: #F0F4FF; -webkit-font-smoothing: antialiased; }
+    input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; width: 100%; height: 36px; cursor: pointer; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 3px solid #2563EB; box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
+    textarea:focus, input:focus, select:focus { outline: none; border-color: #2563EB !important; box-shadow: 0 0 0 3px rgba(37,99,235,0.15) !important; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    .anim-up   { animation: slideUp .3s cubic-bezier(.22,1,.36,1) both; }
+    .anim-fade { animation: fadeIn .22s ease both; }
+    .spin      { animation: spin 1s linear infinite; display: inline-block; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #3B82F644; border-radius: 4px; }
+  </style>
 </head>
-<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#E0F7FA;font-family:sans-serif;">
-  <div style="text-align:center;">
-    <h1 style="color:#00695C;">OncoVida 💙</h1>
-    <p>Tu acompañamiento en el tratamiento</p>
-  </div>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } = Recharts;
+const SYMPTOMS = [
+  { id: "nausea",   label: "Náuseas",            icon: "🤢" },
+  { id: "fatigue",  label: "Fatiga",              icon: "😴" },
+  { id: "pain",     label: "Dolor",               icon: "💢" },
+  { id: "appetite", label: "Falta de apetito",    icon: "🍽️" },
+  { id: "headache", label: "Dolor de cabeza",     icon: "🤕" },
+  { id: "anxiety",  label: "Ansiedad",            icon: "😰" },
+  { id: "sleep",    label: "Problemas de sueño",  icon: "🌙" },
+  { id: "mouth",    label: "Llagas en la boca",   icon: "💊" },
+];
+const INTENSITY_LABELS = ["Sin molestia","Leve","Moderado","Intenso","Muy intenso"];
+const MOODS       = ["😢","😕","😐","🙂","😊"];
+const MOOD_LABELS = ["Muy mal","Mal","Regular","Bien","Excelente"];
+const IC = v => ["#22C55E","#84CC16","#F59E0B","#F97316","#EF4444"][v] ?? "#22C55E";
+const EMPTY_SYMPTOMS = () => Object.fromEntries(SYMPTOMS.map(s => [s.id, { intensity:0, note:"" }]));
+const FREQ_OPTIONS = ["Una vez al día","Dos veces al día","Tres veces al día","Cada 8 horas","Según necesidad"];
+const TIMES = ["06:00","07:00","08:00","09:00","10:00","12:00","14:00","16:00","18:00","20:00","21:00","22:00"];
+const SK = { records:"mb3_records", premium:"mb3_premium", patient:"mb3_patient", onboarded:"mb3_onboarded", dark:"mb3_dark", meds:"mb3_meds" };
+function load(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const p = JSON.parse(raw);
+    if (Array.isArray(p) && p[0]?.date) return p.map(r => ({ ...r, date: new Date(r.date) }));
+    return p;
+  } catch { return fallback; }
+}
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+const makeT = dark => dark ? {
+  bg:"#0F172A", surface:"#1E293B", surface2:"#273349", border:"#334155",
+  ink:"#F1F5F9", ink2:"#94A3B8", ink3:"#64748B", blue:"#3B82F6",
+  blueLight:"#1E3A5F", blueMid:"#1E40AF22", shadow:"0 4px 20px rgba(0,0,0,0.4)", inputBg:"#0F172A"
+} : {
+  bg:"#F0F4FF", surface:"#FFFFFF", surface2:"#F8FAFF", border:"#E2E8F0",
+  ink:"#0F172A", ink2:"#475569", ink3:"#94A3B8", blue:"#2563EB",
+  blueLight:"#EFF6FF", blueMid:"#DBEAFE", shadow:"0 2px 16px rgba(37,99,235,0.07)", inputBg:"#F8FAFF"
+};
+const OB = [
+  { icon:"💙", title:"Tu bienestar, en tus manos", body:"Registra cómo te sientes cada día durante tu tratamiento. Rápido, privado y diseñado para ti." },
+  { icon:"📋", title:"Síntomas en 2 minutos", body:"Desliza para indicar la intensidad de cada síntoma. Agrega notas para tu médico si lo necesitas." },
+  { icon:"🤖", title:"IA que te entiende", body:"Con Premium, nuestra IA analiza tus síntomas y te da orientación antes de tu próxima cita médica." },
+  { icon:"🔒", title:"Tus datos son tuyos", body:"Todo se guarda solo en tu dispositivo. Nunca compartimos tu información médica con nadie, jamás." },
+];
+function Onboarding({ onDone, T }) {
+  const [step, setStep] = useState(0);
+  const [name, setName] = useState("");
+  const s = OB[step]; const isLast = step === OB.length - 1;
+  return (
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#1D4ED8 0%,#1E1B4B 100%)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24 }}>
+      <div style={{ display:"flex", gap:8, marginBottom:36 }}>
+        {OB.map((_,i) => <div key={i} style={{ width:i===step?28:8, height:8, borderRadius:4, background:i===step?"#fff":"rgba(255,255,255,0.3)", transition:"all .3s" }} />)}
+      </div>
+      <div className="anim-up" key={step} style={{ background:T.surface, borderRadius:24, padding:"32px 28px", maxWidth:380, width:"100%", textAlign:"center", boxShadow:"0 24px 60px rgba(0,0,0,0.3)" }}>
+        <div style={{ fontSize:64, marginBottom:16 }}>{s.icon}</div>
+        <h2 style={{ margin:"0 0 12px", fontSize:22, fontWeight:800, color:T.ink }}>{s.title}</h2>
+        <p style={{ margin:"0 0 24px", fontSize:15, color:T.ink2, lineHeight:1.65 }}>{s.body}</p>
+        {isLast && (
+          <div style={{ marginBottom:20, textAlign:"left" }}>
+            <label style={{ fontSize:13, fontWeight:600, color:T.ink2, display:"block", marginBottom:8 }}>¿Cómo te llamas? (opcional)</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Tu nombre"
+              style={{ width:"100%", border:1.5px solid ${T.border}, borderRadius:10, padding:"11px 14px", fontSize:15, color:T.ink, background:T.inputBg }} />
+          </div>
+        )}
+        <button onClick={() => isLast ? onDone(name.trim()||"Mi paciente") : setStep(p=>p+1)}
+          style={{ width:"100%", padding:14, background:"linear-gradient(135deg,#2563EB,#3B82F6)", color:"#fff", border:"none", borderRadius:12, fontSize:15, fontWeight:700, cursor:"pointer" }}>
+          {isLast ? "Empezar ahora" : "Siguiente"}
+        </button>
+        {!isLast && <button onClick={() => onDone("Mi paciente")} style={{ marginTop:10, background:"none", border:"none", fontSize:13, color:T.ink3, cursor:"pointer", padding:8 }}>Saltar</button>}
+      </div>
+    </div>
+  );
+}
+function Slider({ value, onChange, T }) {
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+        <span style={{ fontSize:12, color:T.ink3 }}>Sin molestia</span>
+        <span style={{ fontSize:13, fontWeight:700, color:IC(value), transition:"color .3s" }}>{INTENSITY_LABELS[value]}</span>
+        <span style={{ fontSize:12, color:T.ink3 }}>Muy intenso</span>
+      </div>
+      <div style={{ position:"relative", height:36, display:"flex", alignItems:"center" }}>
+        <div style={{ position:"absolute", left:0, right:0, height:6, borderRadius:3, background:"linear-gradient(to right,#22C55E,#84CC16,#F59E0B,#F97316,#EF4444)" }} />
+        <input type="range" min={0} max={4} value={value} onChange={e => onChange(Number(e.target.value))} style={{ position:"relative", zIndex:1 }} />
+      </div>
+    </div>
+  );
+}
+function SymptomCard({ symptom, data, onChange, T }) {
+  const active = data.intensity > 0;
+  return (
+    <div style={{ background:active?T.surface:T.surface2, border:2px solid ${active?IC(data.intensity):T.border}, borderRadius:16, padding:"16px 18px", transition:"all .25s", boxShadow:active?T.shadow:"none" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+        <span style={{ fontSize:24 }}>{symptom.icon}</span>
+        <span style={{ fontSize:15, fontWeight:600, color:T.ink }}>{symptom.label}</span>
+        {active && <span style={{ marginLeft:"auto", fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:20, background:IC(data.intensity), color:"#fff" }}>{INTENSITY_LABELS[data.intensity]}</span>}
+      </div>
+      <Slider value={data.intensity} onChange={v => onChange({...data,intensity:v})} T={T} />
+      {active && <textarea placeholder="Nota para tu médico (opcional)…" value={data.note||""} onChange={e => onChange({...data,note:e.target.value})} rows={2}
+        style={{ marginTop:10, width:"100%", borderRadius:10, border:1.5px solid ${T.border}, padding:"10px 12px", fontSize:13, color:T.ink, resize:"none", background:T.inputBg }} />}
+    </div>
+  );
+}
+function Toast({ msg, color, icon }) {
+  return <div className="anim-up" style={{ background:color, color:"#fff", borderRadius:12, padding:"12px 18px", marginBottom:16, fontWeight:600, fontSize:14, display:"flex", alignItems:"center", gap:8 }}>{icon} {msg}</div>;
+}
+function PremiumModal({ onClose, onActivate, T }) {
+  const perks = [["🤖","IA analiza tus síntomas"],["📊","Gráficas de evolución"],["📄","Reporte para tu oncólogo"],["💊","Seguimiento de medicamentos"],["🔔","Recordatorios personalizados"]];
+  return (
+    <div className="anim-fade" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:200, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+      <div className="anim-up" style={{ background:T.surface, borderRadius:"24px 24px 0 0", padding:"0 24px 36px", width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto" }}>
+        <div style={{ width:40, height:4, background:T.border, borderRadius:2, margin:"14px auto 20px" }} />
+        <div style={{ textAlign:"center", marginBottom:20 }}>
+          <div style={{ fontSize:52, marginBottom:8 }}>⭐</div>
+          <h2 style={{ margin:0, fontSize:22, fontWeight:800, color:T.ink }}>Plan Premium</h2>
+          <p style={{ margin:"6px 0 0", color:T.ink2, fontSize:14 }}>Todo lo que necesitas para tu seguimiento</p>
+        </div>
+        {perks.map(([icon,text]) => <div key={text} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background:T.blueLight, borderRadius:12, marginBottom:8 }}><span style={{ fontSize:20 }}>{icon}</span><span style={{ fontSize:14, color:T.ink, fontWeight:500 }}>{text}</span></div>)}
+        <div style={{ background:T.blueMid, borderRadius:14, padding:16, textAlign:"center", margin:"16px 0", border:1px solid ${T.border} }}>
+          <div style={{ fontSize:32, fontWeight:900, color:T.blue }}>$6.99<span style={{ fontSize:14, fontWeight:500, color:T.ink2 }}>/mes</span></div>
+          <div style={{ fontSize:12, color:T.ink3, marginTop:2 }}>7 días gratis · Cancela cuando quieras</div>
+        </div>
+        <button onClick={onActivate} style={{ width:"100%", padding:14, background:linear-gradient(135deg,${T.blue},#3B82F6), color:"#fff", border:"none", borderRadius:12, fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>Activar prueba gratuita</button>
+        <button onClick={onClose} style={{ display:"block", width:"100%", padding:10, background:"transparent", color:T.ink3, border:"none", fontSize:14, cursor:"pointer", textAlign:"center" }}>Ahora no</button>
+      </div>
+    </div>
+  );
+}
+function AIAnalysis({ records, symptoms, mood, T }) {
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  async function analyze() {
+    setLoading(true); setError(null); setResult(null);
+    const activeNow = SYMPTOMS.filter(s => symptoms[s.id].intensity > 0);
+    const currentSymptoms = activeNow.length > 0 ? activeNow.map(s => ${s.label}: ${INTENSITY_LABELS[symptoms[s.id].intensity]}).join(", ") : "Sin síntomas activos";
+    const recent = records.slice(0,5).map(r => ({ fecha: new Date(r.date).toLocaleDateString("es-ES",{day:"numeric",month:"short"}), ánimo: MOOD_LABELS[r.mood], síntomas: SYMPTOMS.filter(s=>r.symptoms[s.id]?.intensity>0).map(s=>${s.label}(${INTENSITY_LABELS[r.symptoms[s.id].intensity]})).join(",")||"ninguno" }));
+    const prompt = Eres un asistente de apoyo para pacientes oncológicos. Analiza estos datos.\nSÍNTOMAS HOY: ${currentSymptoms}\nÁNIMO HOY: ${MOOD_LABELS[mood]}\nHISTORIAL: ${recent.map(r=>${r.fecha}: ánimo ${r.ánimo}, ${r.síntomas}).join(" | ")}\nResponde SOLO en JSON sin markdown:\n{"resumen":"1-2 oraciones del patrón general","alertas":["alerta si hay"],"consejos":["consejo1","consejo2","consejo3"],"preguntasParaMedico":["pregunta1","pregunta2"],"animo":"mensaje de apoyo breve"};
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:800, messages:[{role:"user",content:prompt}] }) });
+      const data = await res.json();
+      const text = data.content?.map(b=>b.text||"").join("")||"";
+      setResult(JSON.parse(text.replace(/json|/g,"").trim()));
+    } catch(e) { setError("No se pudo conectar con la IA. Intenta de nuevo."); }
+    finally { setLoading(false); }
+  }
+  return (
+    <div style={{ background:T.surface, border:1.5px solid ${T.blue}22, borderRadius:16, overflow:"hidden", boxShadow:T.shadow }}>
+      <div style={{ background:linear-gradient(135deg,${T.blue}18,${T.blue}06), padding:"16px 18px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}><span style={{ fontSize:22 }}>🤖</span><div><div style={{ fontSize:14, fontWeight:700, color:T.ink }}>Análisis con IA</div><div style={{ fontSize:11, color:T.ink2 }}>Orientación personalizada</div></div></div>
+        <button onClick={analyze} disabled={loading} style={{ background:loading?T.border:linear-gradient(135deg,${T.blue},#3B82F6), color:loading?T.ink3:"#fff", border:"none", borderRadius:10, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:loading?"default":"pointer", display:"flex", alignItems:"center", gap:6 }}>
+          {loading ? <><span className="spin">⟳</span> Analizando…</> : result?"Actualizar":"Analizar"}
+        </button>
+      </div>
+      {error && <div style={{ padding:"12px 18px", background:"#FEF2F2", color:"#DC2626", fontSize:13 }}>{error}</div>}
+      {result && (
+        <div className="anim-fade" style={{ padding:18 }}>
+          <div style={{ background:T.blueLight, borderRadius:12, padding:"12px 14px", marginBottom:12 }}><div style={{ fontSize:12, fontWeight:700, color:T.blue, marginBottom:4, textTransform:"uppercase" }}>Resumen</div><div style={{ fontSize:14, color:T.ink, lineHeight:1.6 }}>{result.resumen}</div></div>
+          {result.alertas?.length>0 && <div style={{ background:"#FEF2F2", borderRadius:12, padding:"12px 14px", marginBottom:12, border:"1.5px solid #FECACA" }}><div style={{ fontSize:12, fontWeight:700, color:"#DC2626", marginBottom:6 }}>⚠️ Atención</div>{result.alertas.map((a,i)=><div key={i} style={{ fontSize:13, color:"#7F1D1D" }}>• {a}</div>)}</div>}
+          <div style={{ marginBottom:12 }}><div style={{ fontSize:12, fontWeight:700, color:T.ink2, marginBottom:8, textTransform:"uppercase" }}>💡 Consejos</div>{result.consejos?.map((c,i)=><div key={i} style={{ display:"flex", gap:8, marginBottom:8, background:T.surface2, borderRadius:10, padding:"10px 12px" }}><span style={{ fontSize:16, flexShrink:0 }}>{"💧🧘🍃🌡️💬".split("")[i]||"•"}</span><span style={{ fontSize:13, color:T.ink, lineHeight:1.55 }}>{c}</span></div>)}</div>
+          <div style={{ marginBottom:12 }}><div style={{ fontSize:12, fontWeight:700, color:T.ink2, marginBottom:8, textTransform:"uppercase" }}>🩺 Preguntas para tu médico</div>{result.preguntasParaMedico?.map((q,i)=><div key={i} style={{ fontSize:13, color:T.ink, marginBottom:6, paddingLeft:14, borderLeft:3px solid ${T.blue}, lineHeight:1.55 }}>{q}</div>)}</div>
+          <div style={{ background:linear-gradient(135deg,#1D4ED820,#2563EB12), borderRadius:12, padding:"12px 14px", borderLeft:4px solid ${T.blue} }}><div style={{ fontSize:13, color:T.ink, lineHeight:1.6, fontStyle:"italic" }}>💙 {result.animo}</div></div>
+          <div style={{ fontSize:11, color:T.ink3, marginTop:12, textAlign:"center" }}>Esta orientación no reemplaza el consejo médico profesional.</div>
+        </div>
+      )}
+      {!result && !loading && <div style={{ padding:"16px 18px", textAlign:"center", color:T.ink3, fontSize:13 }}>Completa tu registro y presiona Analizar.</div>}
+    </div>
+  );
+}
+function ChartsTab({ records, T }) {
+  const [sel, setSel] = useState("nausea");
+  if (records.length < 2) return <div style={{ textAlign:"center", padding:"60px 20px", color:T.ink3 }}><div style={{ fontSize:52, marginBottom:12 }}>📊</div><div style={{ fontSize:16, fontWeight:700, color:T.ink }}>Necesitas al menos 2 registros</div></div>;
+  const data = [...records].reverse().map(r => ({ fecha: new Date(r.date).toLocaleDateString("es-ES",{day:"numeric",month:"short"}), ánimo: r.mood, [sel]: r.symptoms[sel]?.intensity??0 }));
+  const avg = SYMPTOMS.map(s => ({ name:s.label, promedio: parseFloat((records.reduce((a,r)=>a+(r.symptoms[s.id]?.intensity??0),0)/records.length).toFixed(1)) })).sort((a,b)=>b.promedio-a.promedio);
+  const card = { background:T.surface, borderRadius:16, padding:20, boxShadow:T.shadow, border:1px solid ${T.border}, marginBottom:16 };
+  return (
+    <div>
+      <div style={card}><div style={{ fontSize:14, fontWeight:700, color:T.ink, marginBottom:14 }}>Estado de ánimo</div><ResponsiveContainer width="100%" height={170}><LineChart data={data}><CartesianGrid strokeDasharray="3 3" stroke={T.border} /><XAxis dataKey="fecha" tick={{ fontSize:11, fill:T.ink2 }} /><YAxis domain={[0,4]} tickFormatter={i=>MOODS[i]} tick={{ fontSize:14 }} /><Tooltip contentStyle={{ background:T.surface, border:1px solid ${T.border}, borderRadius:8 }} formatter={v=>[MOOD_LABELS[v],"Ánimo"]} /><Line type="monotone" dataKey="ánimo" stroke={T.blue} strokeWidth={2.5} dot={{ r:4, fill:T.blue }} /></LineChart></ResponsiveContainer></div>
+      <div style={card}><div style={{ fontSize:14, fontWeight:700, color:T.ink, marginBottom:10 }}>Evolución de síntoma</div><div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:14 }}>{SYMPTOMS.map(s=><button key={s.id} onClick={()=>setSel(s.id)} style={{ padding:"5px 10px", borderRadius:20, border:"none", cursor:"pointer", background:sel===s.id?T.blue:T.surface2, color:sel===s.id?"#fff":T.ink2, fontSize:12, fontWeight:600 }}>{s.icon} {s.label}</button>)}</div><ResponsiveContainer width="100%" height={170}><LineChart data={data}><CartesianGrid strokeDasharray="3 3" stroke={T.border} /><XAxis dataKey="fecha" tick={{ fontSize:11, fill:T.ink2 }} /><YAxis domain={[0,4]} tickFormatter={i=>INTENSITY_LABELS[i]?.slice(0,3)} tick={{ fontSize:10, fill:T.ink2 }} /><Tooltip contentStyle={{ background:T.surface, border:1px solid ${T.border}, borderRadius:8 }} formatter={v=>[INTENSITY_LABELS[v],SYMPTOMS.find(s=>s.id===sel)?.label]} /><Line type="monotone" dataKey={sel} stroke="#F97316" strokeWidth={2.5} dot={{ r:4, fill:"#F97316" }} /></LineChart></ResponsiveContainer></div>
+      <div style={card}><div style={{ fontSize:14, fontWeight:700, color:T.ink, marginBottom:14 }}>Promedio por síntoma</div><ResponsiveContainer width="100%" height={220}><BarChart data={avg} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke={T.border} /><XAxis type="number" domain={[0,4]} tick={{ fontSize:11, fill:T.ink2 }} /><YAxis type="category" dataKey="name" tick={{ fontSize:11, fill:T.ink2 }} width={115} /><Tooltip contentStyle={{ background:T.surface, border:1px solid ${T.border}, borderRadius:8 }} formatter={v=>[INTENSITY_LABELS[Math.round(v)],"Promedio"]} /><Bar dataKey="promedio" fill={T.blue} radius={[0,6,6,0]} /></BarChart></ResponsiveContainer></div>
+    </div>
+  );
+}
+function MedsTab({ meds, setMeds, T }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name:"", dose:"", freq:FREQ_OPTIONS[0], time:"08:00", notes:"", active:true });
+  const [editIdx, setEditIdx] = useState(null);
+  const inp = { width:"100%", border:1.5px solid ${T.border}, borderRadius:10, padding:"11px 14px", fontSize:14, color:T.ink, background:T.inputBg };
+  function save2() {
+    if (!form.name.trim()) return;
+    if (editIdx!==null) { setMeds(p=>p.map((m,i)=>i===editIdx?{...form}:m)); setEditIdx(null); }
+    else setMeds(p=>[...p,{...form,id:Date.now()}]);
+    setForm({name:"",dose:"",freq:FREQ_OPTIONS[0],time:"08:00",notes:"",active:true}); setShowForm(false);
+  }
+  return (
+    <div>
+      <button onClick={()=>{setShowForm(true);setEditIdx(null);}} style={{ width:"100%", padding:14, background:linear-gradient(135deg,${T.blue},#3B82F6), color:"#fff", border:"none", borderRadius:14, fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:14 }}>+ Agregar medicamento</button>
+      {showForm && <div className="anim-up" style={{ background:T.surface, borderRadius:16, padding:20, boxShadow:T.shadow, border:1.5px solid ${T.border}, marginBottom:14 }}>
+        <div style={{ fontSize:15, fontWeight:700, color:T.ink, marginBottom:16 }}>{editIdx!==null?"Editar":"Nuevo"} medicamento</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          <div><label style={{ fontSize:12, fontWeight:600, color:T.ink2, display:"block", marginBottom:5 }}>Nombre *</label><input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Ej: Ondansetrón" style={inp} /></div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div><label style={{ fontSize:12, fontWeight:600, color:T.ink2, display:"block", marginBottom:5 }}>Dosis</label><input value={form.dose} onChange={e=>setForm(p=>({...p,dose:e.target.value}))} placeholder="Ej: 8mg" style={inp} /></div>
+            <div><label style={{ fontSize:12, fontWeight:600, color:T.ink2, display:"block", marginBottom:5 }}>Horario</label><select value={form.time} onChange={e=>setForm(p=>({...p,time:e.target.value}))} style={inp}>{TIMES.map(t=><option key={t}>{t}</option>)}</select></div>
+          </div>
+          <div><label style={{ fontSize:12, fontWeight:600, color:T.ink2, display:"block", marginBottom:5 }}>Frecuencia</label><select value={form.freq} onChange={e=>setForm(p=>({...p,freq:e.target.value}))} style={inp}>{FREQ_OPTIONS.map(f=><option key={f}>{f}</option>)}</select></div>
+          <div><label style={{ fontSize:12, fontWeight:600, color:T.ink2, display:"block", marginBottom:5 }}>Notas</label><input value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Ej: Tomar con comida" style={inp} /></div>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:16 }}>
+          <button onClick={()=>{setShowForm(false);setEditIdx(null);}} style={{ padding:12, background:T.surface2, color:T.ink2, border:1.5px solid ${T.border}, borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer" }}>Cancelar</button>
+          <button onClick={save2} style={{ padding:12, background:linear-gradient(135deg,${T.blue},#3B82F6), color:"#fff", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer" }}>Guardar</button>
+        </div>
+      </div>}
+      {meds.length===0&&!showForm ? <div style={{ textAlign:"center", padding:"50px 20px", color:T.ink3 }}><div style={{ fontSize:48, marginBottom:12 }}>💊</div><div style={{ fontSize:15, fontWeight:700, color:T.ink }}>Sin medicamentos</div></div>
+      : meds.map((m,i) => <div key={m.id||i} style={{ background:T.surface, borderRadius:16, padding:"16px 18px", border:1.5px solid ${T.border}, marginBottom:10, opacity:m.active?1:0.5, boxShadow:m.active?T.shadow:"none" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+          <div style={{ flex:1 }}><div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}><span style={{ fontSize:20 }}>💊</span><span style={{ fontSize:15, fontWeight:700, color:T.ink }}>{m.name}</span>{m.dose&&<span style={{ fontSize:12, background:T.blueLight, color:T.blue, padding:"2px 8px", borderRadius:20, fontWeight:600 }}>{m.dose}</span>}</div><div style={{ fontSize:12, color:T.ink2, marginLeft:28 }}>🕐 {m.time} · {m.freq}</div>{m.notes&&<div style={{ fontSize:12, color:T.ink3, marginLeft:28, marginTop:3 }}>📝 {m.notes}</div>}</div>
+          <div style={{ display:"flex", gap:6 }}>
+            <button onClick={()=>setMeds(p=>p.map((x,idx)=>idx===i?{...x,active:!x.active}:x))} style={{ background:m.active?"#DCFCE7":T.surface2, border:"none", borderRadius:8, padding:"5px 8px", fontSize:12, cursor:"pointer", color:m.active?"#16A34A":T.ink3, fontWeight:600 }}>{m.active?"✓":"OFF"}</button>
+            <button onClick={()=>{setForm({...m});setEditIdx(i);setShowForm(true);}} style={{ background:T.blueLight, border:"none", borderRadius:8, padding:"5px 8px", fontSize:13, cursor:"pointer" }}>✏️</button>
+            <button onClick={()=>setMeds(p=>p.filter((_,idx)=>idx!==i))} style={{ background:"#FEF2F2", border:"none", borderRadius:8, padding:"5px 8px", fontSize:13, cursor:"pointer" }}>🗑️</button>
+          </div>
+        </div>
+      </div>)}
+    </div>
+  );
+}
+function ReportTab({ records, patient, setPatient, T }) {
+  const [copied, setCopied] = useState(false);
+  function buildText() {
+    const lines = [REPORTE DE SÍNTOMAS,Paciente: ${patient},Generado: ${new Date().toLocaleDateString("es-ES",{year:"numeric",month:"long",day:"numeric"})},"=".repeat(46)];
+    records.forEach((r,i) => { const d=new Date(r.date); lines.push(\nRegistro ${i+1} — ${d.toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}); lines.push(Ánimo: ${MOOD_LABELS[r.mood]} ${MOODS[r.mood]}); const active=SYMPTOMS.filter(s=>r.symptoms[s.id].intensity>0); active.length===0?lines.push("  Sin síntomas ✅"):active.forEach(s=>{const sd=r.symptoms[s.id];lines.push(`  • ${s.label}: ${INTENSITY_LABELS[sd.intensity]}${sd.note?` — ${sd.note}:""});});});
+    lines.push("\n"+"=".repeat(46),"Generado con Mi Bienestar"); return lines.join("\n");
+  }
+  function download() { const blob=new Blob([buildText()],{type:"text/plain;charset=utf-8"}); const url=URL.createObjectURL(blob); const a=document.createElement("a");a.href=url;a.download=reporte-${new Date().toISOString().slice(0,10)}.txt;a.click();URL.revokeObjectURL(url); }
+  const inp = { width:"100%", border:1.5px solid ${T.border}, borderRadius:10, padding:"11px 14px", fontSize:14, color:T.ink, background:T.inputBg };
+  return (
+    <div>
+      <div style={{ background:T.surface, borderRadius:16, padding:20, boxShadow:T.shadow, border:1px solid ${T.border}, marginBottom:14 }}>
+        <div style={{ fontSize:15, fontWeight:700, color:T.ink, marginBottom:16 }}>Reporte para tu médico</div>
+        <label style={{ fontSize:12, fontWeight:600, color:T.ink2, display:"block", marginBottom:6 }}>Nombre del paciente</label>
+        <input value={patient} onChange={e=>{setPatient(e.target.value);save(SK.patient,e.target.value);}} style={{...inp, marginBottom:16}} />
+        <div style={{ background:T.blueLight, borderRadius:12, padding:"12px 14px", marginBottom:16 }}>{["Todos los registros","Estado de ánimo por día","Notas por síntoma","Fecha y hora exacta"].map(it=><div key={it} style={{ fontSize:13, color:T.ink, marginBottom:3 }}>✅ {it}</div>)}</div>
+        {records.length===0?<div style={{ textAlign:"center", color:T.ink3, padding:"16px 0", fontSize:13 }}>Aún no tienes registros.</div>:(
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <button onClick={download} style={{ width:"100%", padding:14, background:linear-gradient(135deg,${T.blue},#3B82F6), color:"#fff", border:"none", borderRadius:12, fontSize:15, fontWeight:700, cursor:"pointer" }}>📄 Descargar ({records.length} registros)</button>
+            <button onClick={()=>navigator.clipboard.writeText(buildText()).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2200);})} style={{ width:"100%", padding:13, background:copied?"#22C55E":T.surface2, color:copied?"#fff":T.ink, border:1.5px solid ${T.border}, borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer", transition:"all .2s" }}>{copied?"✅ ¡Copiado!":"📋 Copiar texto"}</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+const NAV = [{icon:"📋",label:"Hoy",tab:0},{icon:"📅",label:"Historial",tab:1},{icon:"📊",label:"Gráficas",tab:2,premium:true},{icon:"💊",label:"Medicam.",tab:3,premium:true},{icon:"📄",label:"Reporte",tab:4,premium:true}];
+function App() {
+  const [onboarded,setOnboarded] = useState(()=>load(SK.onboarded,false));
+  const [isPremium,setIsPremium] = useState(()=>load(SK.premium,false));
+  const [patient,setPatient]     = useState(()=>load(SK.patient,"Mi paciente")||"Mi paciente");
+  const [records,setRecords]     = useState(()=>load(SK.records,[]));
+  const [dark,setDark]           = useState(()=>load(SK.dark,false));
+  const [meds,setMeds]           = useState(()=>load(SK.meds,[]));
+  const [tab,setTab]             = useState(0);
+  const [symptoms,setSymptoms]   = useState(EMPTY_SYMPTOMS);
+  const [mood,setMood]           = useState(3);
+  const [toast,setToast]         = useState(null);
+  const [showPremium,setShowPremium] = useState(false);
+  const T = makeT(dark);
+  useEffect(()=>{ save(SK.records,records); },[records]);
+  useEffect(()=>{ save(SK.premium,isPremium); },[isPremium]);
+  useEffect(()=>{ save(SK.patient,patient); },[patient]);
+  useEffect(()=>{ save(SK.dark,dark); },[dark]);
+  useEffect(()=>{ save(SK.meds,meds); },[meds]);
+  function showT(msg,color="#22C55E",icon="✅") { setToast({msg,color,icon}); setTimeout(()=>setToast(null),2800); }
+  function goTab(i) { const n=NAV.find(n=>n.tab===i); if(n?.premium&&!isPremium){setShowPremium(true);return;} setTab(i); }
+  function handleSave() { setRecords(p=>[{date:new Date(),mood,symptoms:Object.fromEntries(SYMPTOMS.map(s=>[s.id,{...symptoms[s.id]}]))}, ...p]); setSymptoms(EMPTY_SYMPTOMS()); setMood(3); showT("Registro guardado","#22C55E","✅"); setTab(1); }
+  const activeCount = Object.values(symptoms).filter(s=>s.intensity>0).length;
+  const titles = ["¿Cómo te sientes hoy?","Tu historial","Tus gráficas","Medicamentos","Reporte médico"];
+  if (!onboarded) return <div style={{ background:T.bg, minHeight:"100vh" }}><Onboarding T={T} onDone={name=>{setPatient(name);save(SK.patient,name);save(SK.onboarded,true);setOnboarded(true);}} /></div>;
+  return (
+    <div style={{ minHeight:"100vh", background:T.bg, paddingBottom:80 }}>
+      {showPremium && <PremiumModal T={T} onClose={()=>setShowPremium(false)} onActivate={()=>{setIsPremium(true);setShowPremium(false);showT("¡Premium activado! 🎉","#2563EB","⭐");setTab(2);}} />}
+      <div style={{ background:linear-gradient(135deg,${T.blue} 0%,#1D4ED8 100%), padding:"20px 20px 18px" }}>
+        <div style={{ maxWidth:480, margin:"0 auto", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ fontSize:11, fontWeight:700, letterSpacing:2, color:"rgba(255,255,255,.65)", textTransform:"uppercase", marginBottom:2 }}>Mi Bienestar</div>
+            <h1 style={{ margin:0, fontSize:20, fontWeight:800, color:"#fff" }}>{titles[tab]}</h1>
+            <p style={{ margin:"2px 0 0", fontSize:12, color:"rgba(255,255,255,.7)" }}>{new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"})}</p>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <button onClick={()=>setDark(d=>!d)} style={{ background:"rgba(255,255,255,.15)", border:"1.5px solid rgba(255,255,255,.3)", borderRadius:20, padding:"6px 10px", fontSize:16, cursor:"pointer", color:"#fff" }}>{dark?"☀️":"🌙"}</button>
+            {isPremium ? <span style={{ background:"rgba(255,255,255,.2)", borderRadius:20, padding:"5px 12px", fontSize:12, fontWeight:700, color:"#fff" }}>⭐ Premium</span>
+              : <button onClick={()=>setShowPremium(true)} style={{ background:"rgba(255,255,255,.15)", border:"1.5px solid rgba(255,255,255,.4)", borderRadius:20, padding:"6px 14px", fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer" }}>⭐ Premium</button>}
+          </div>
+        </div>
+      </div>
+      <div style={{ maxWidth:480, margin:"0 auto", padding:"20px 16px 16px" }}>
+        {toast && <Toast {...toast} />}
+        {tab===0 && (
+          <div className="anim-fade">
+            <div style={{ background:T.surface, borderRadius:16, padding:20, marginBottom:14, boxShadow:T.shadow, border:1px solid ${T.border} }}>
+              <div style={{ fontSize:14, fontWeight:600, color:T.ink, marginBottom:14 }}>¿Cómo te sientes en general?</div>
+              <div style={{ display:"flex", justifyContent:"space-around" }}>
+                {MOODS.map((m,i) => <button key={i} onClick={()=>setMood(i)} style={{ fontSize:28, border:"none", cursor:"pointer", background:mood===i?T.blueLight:"transparent", borderRadius:12, padding:"8px 10px", transform:mood===i?"scale(1.25)":"scale(1)", transition:"all .2s", outline:mood===i?2px solid ${T.blue}:"none" }}>{m}</button>)}
+              </div>
+              <div style={{ textAlign:"center", marginTop:8, fontSize:13, fontWeight:700, color:T.blue }}>{MOOD_LABELS[mood]}</div>
+            </div>
+            {activeCount>0 && <div style={{ background:T.blueLight, borderRadius:10, padding:"9px 14px", marginBottom:12, fontSize:13, color:T.blue, fontWeight:600 }}>💊 {activeCount} síntoma{activeCount>1?"s":""} registrado{activeCount>1?"s":""}</div>}
+            <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:16 }}>
+              {SYMPTOMS.map(s => <SymptomCard key={s.id} symptom={s} data={symptoms[s.id]} onChange={d=>setSymptoms(p=>({...p,[s.id]:d}))} T={T} />)}
+            </div>
+            {isPremium && <div style={{ marginBottom:16 }}><AIAnalysis records={records} symptoms={symptoms} mood={mood} T={T} /></div>}
+            {!isPremium && (
+              <div style={{ background:linear-gradient(135deg,${T.blue}12,${T.blue}06), borderRadius:14, padding:"14px 16px", marginBottom:16, border:1.5px dashed ${T.blue}44, display:"flex", gap:12, alignItems:"center" }}>
+                <span style={{ fontSize:28 }}>🤖</span>
+                <div style={{ flex:1 }}><div style={{ fontSize:13, fontWeight:700, color:T.ink }}>Análisis con IA</div><div style={{ fontSize:12, color:T.ink2, marginTop:2 }}>Orientación personalizada con Premium</div></div>
+                <button onClick={()=>setShowPremium(true)} style={{ background:linear-gradient(135deg,${T.blue},#3B82F6), color:"#fff", border:"none", borderRadius:8, padding:"7px 12px", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>Premium</button>
+              </div>
+            )}
+            <button onClick={handleSave} style={{ width:"100%", padding:15, background:linear-gradient(135deg,${T.blue},#3B82F6), color:"#fff", border:"none", borderRadius:14, fontSize:16, fontWeight:700, cursor:"pointer", boxShadow:"0 4px 16px rgba(37,99,235,.35)" }}>Guardar registro de hoy</button>
+          </div>
+        )}
+        {tab===1 && (
+          <div className="anim-fade">
+            {records.length===0 ? (
+              <div style={{ textAlign:"center", padding:"60px 20px", color:T.ink3 }}>
+                <div style={{ fontSize:52, marginBottom:12 }}>📋</div>
+                <div style={{ fontSize:16, fontWeight:700, color:T.ink }}>Sin registros todavía</div>
+                <button onClick={()=>setTab(0)} style={{ marginTop:20, padding:"12px 28px", background:linear-gradient(135deg,${T.blue},#3B82F6), color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer" }}>Hacer mi primer registro</button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize:13, color:T.ink3, fontWeight:600, marginBottom:12 }}>{records.length} registro{records.length>1?"s":""} guardado{records.length>1?"s":""}</div>
+                {records.map((r,i) => { const active=SYMPTOMS.filter(s=>r.symptoms[s.id].intensity>0); const d=new Date(r.date); return (
+                  <div key={i} style={{ background:T.surface, borderRadius:16, padding:"16px 18px", boxShadow:T.shadow, border:1px solid ${T.border}, marginBottom:12 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+                      <div><div style={{ fontSize:13, fontWeight:700, color:T.blue }}>{d.toLocaleDateString("es-ES",{day:"numeric",month:"short",year:"numeric"})}</div><div style={{ fontSize:11, color:T.ink3 }}>{d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}</div></div>
+                      <div style={{ display:"flex", alignItems:"center", gap:8 }}><span style={{ fontSize:26 }}>{MOODS[r.mood]}</span><button onClick={()=>{setRecords(p=>p.filter((_,idx)=>idx!==i));showT("Eliminado","#64748B","🗑️");}} style={{ background:"#FEF2F2", border:"none", borderRadius:8, padding:"5px 8px", fontSize:13, cursor:"pointer" }}>🗑️</button></div>
+                    </div>
+                    {active.length===0 ? <div style={{ fontSize:13, color:"#22C55E", fontWeight:600 }}>✅ Sin síntomas</div> : <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{active.map(s=><div key={s.id} style={{ display:"flex", alignItems:"center", gap:4, background:T.surface2, borderRadius:20, padding:"4px 10px", fontSize:12, fontWeight:500, color:T.ink }}>{s.icon} {s.label} <span style={{ width:7, height:7, borderRadius:"50%", background:IC(r.symptoms[s.id].intensity), display:"inline-block" }} /></div>)}</div>}
+                  </div>
+                );})}
+              </div>
+            )}
+          </div>
+        )}
+        {tab===2 && isPremium && <div className="anim-fade"><ChartsTab records={records} T={T} /></div>}
+        {tab===3 && isPremium && <div className="anim-fade"><MedsTab meds={meds} setMeds={setMeds} T={T} /></div>}
+        {tab===4 && isPremium && <div className="anim-fade"><ReportTab records={records} patient={patient} setPatient={setPatient} T={T} /></div>}
+      </div>
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:100 }}>
+        <div style={{ maxWidth:480, margin:"0 auto", background:T.surface, borderTop:1px solid ${T.border}, display:"flex", boxShadow:"0 -4px 20px rgba(0,0,0,.1)" }}>
+          {NAV.map(n => { const locked=n.premium&&!isPremium; const active=tab===n.tab; return (
+            <button key={n.tab} onClick={()=>goTab(n.tab)} style={{ flex:1, padding:"10px 2px 8px", border:"none", background:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3, position:"relative" }}>
+              <span style={{ fontSize:18, opacity:locked?.35:1, position:"relative" }}>{n.icon}{locked&&<span style={{ position:"absolute", top:-3, right:-7, fontSize:9 }}>🔒</span>}</span>
+              <span style={{ fontSize:9, fontWeight:active?800:500, color:active?T.blue:locked?T.border:T.ink3 }}>{n.label}</span>
+              {active && <div style={{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)", width:20, height:3, borderRadius:2, background:T.blue }} />}
+            </button>
+          );})}
+        </div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
 </body>
 </html>
