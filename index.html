@@ -64,8 +64,7 @@
         return (
           <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
             <div className="max-w-md mx-auto">
-              <h1 className="text-3xl font-bold text-center mb-2 mt-4
-text-gray-800">Mi Bienestar 💙</h1>
+              <h1 className="text-3xl font-bold text-center mb-2 mt-4 text-gray-800">Mi Bienestar 💙</h1>
               <p className="text-center text-gray-600 mb-6">Tu compañero diario</p>
 
               <div className="grid grid-cols-2 gap-4 mb-6">
@@ -79,60 +78,4 @@ text-gray-800">Mi Bienestar 💙</h1>
                   <div className="font-bold text-gray-700">Ánimo</div>
                   <div className="text-sm text-gray-500">{mood.length} registros</div>
                 </button>
-                <button onClick={() => setScreen('meds')} className="bg-white p-6 rounded-2xl shadow-md hover:shadow-xl transition-all">
-                  <Pill className="w-10 h-10 text-green-500 mb-3 mx-auto" />
-                  <div className="font-bold text-gray-700">Medicamentos</div>
-                  <div className="text-sm text-gray-500">{medications.length} activos</div>
-                </button>
-                <button onClick={() => setScreen('record')} className="bg-white p-6 rounded-2xl shadow-md hover:shadow-xl transition-all">
-                  <Bell className="w-10 h-10 text-purple-500 mb-3 mx-auto" />
-                  <div className="font-bold text-gray-700">Recordatorios</div>
-                  <div className="text-sm text-gray-500">{reminders.length} activos</div>
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      if (screen === 'sintomas') {
-        return (
-          <div className="min-h-screen bg-gray-50 p-4">
-            <div className="max-w-md mx-auto">
-              <div className="flex justify-between items-center mb-4">
-                <button onClick={() => setScreen('home')} className="text-blue-600 font-medium">← Volver</button>
-                <button onClick={() => {setModalType('sintoma'); setShowModal(true);}} className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-                  <Plus className="w-4 h-4" /> Agregar
-                </button>
-              </div>
-              <h2 className="text-xl font-bold mb-4">Registro de Síntomas</h2>
-              {symptoms.length === 0? (
-                <div className="bg-white p-6 rounded-xl text-center text-gray-500">No hay registros todavía</div>
-              ) : (
-                <div className="space-y-3">
-                  {symptoms.map(s => (
-                    <div key={s.id} className="bg-white p-4 rounded-xl shadow">
-                      <div className="flex justify-between mb-2">
-                        <span className="font-semibold">Nivel: {s.level}/10</span>
-                        <span className="text-sm text-gray-500">{s.date}</span>
-                      </div>
-                      <p className="text-gray-600 text-sm">{s.note}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {showModal && modalType === 'sintoma' && (
-                <Modal onClose={() => setShowModal(false)} onSave={(l,n) => addSymptom(l,n)} title="Nuevo Síntoma" />
-              )}
-            </div>
-          </div>
-        );
-      }
-
-      if (screen === 'animo') {
-        return (
-          <div className="min-h-screen bg-gray-50 p-4">
-            <div className="max-w-md mx-auto">
-              <div className="flex justify-between items-center mb-4">
-                <button onClick={() => setScreen('home')} className="text-blue-600 font-medium">← Volver</button>
-                <button onClick={() => {setModalType('animo'); setShowModal(true);}} className="bg-yellow-500 text-white px-4 py-2 rounded-lg flex items-center
+                <button onCli
