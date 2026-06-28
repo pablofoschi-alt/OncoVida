@@ -9,15 +9,23 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  </style>
 </head>
-<body class="bg-gray-50">
+<body>
   <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
     const { Plus, Bell, BarChart3, Calendar, Heart, Pill, Smile, TrendingUp, X, Save } = lucideReact;
 
-    const STORAGE_KEYS = { symptoms: 'onco_sintomas', mood: 'onco_animo', medications: 'onco_meds', reminders: 'onco_reminders' };
+    const STORAGE_KEYS = {
+      symptoms: 'onco_sintomas',
+      mood: 'onco_animo',
+      medications: 'onco_meds',
+      reminders: 'onco_reminders'
+    };
 
     function App() {
       const [screen, setScreen] = useState('home');
@@ -29,40 +37,31 @@
       const [modalType, setModalType] = useState('');
 
       useEffect(() => { localStorage.setItem(STORAGE_KEYS.symptoms, JSON.stringify(symptoms)); }, [symptoms]);
-      useEffect(() => { localStorage.setItem(STORAGE_KEYS.mood, JSON.stringify(mood)); }, );
+      useEffect(() => { localStorage.setItem(STORAGE_KEYS.mood, JSON.stringify(mood)); }, [mood]);
       useEffect(() => { localStorage.setItem(STORAGE_KEYS.medications, JSON.stringify(medications)); }, [medications]);
       useEffect(() => { localStorage.setItem(STORAGE_KEYS.reminders, JSON.stringify(reminders)); }, [reminders]);
 
-      const addSymptom = (level, note) => { setSymptoms([{id: Date.now(), date: new Date().toLocaleDateString('es-AR'), level, note},...symptoms]); setShowModal(false); };
-      const addMood = (level, note) => { setMood([{id: Date.now(), date: new Date().toLocaleDateString('es-AR'), level, note},...mood]); setShowModal(false); };
-      const addMedication = (name, time) => { setMedications([{id: Date.now(), name, time, taken: false},...medications]); setShowModal(false); };
-      const toggleMed = (id) => { setMedications(medications.map(m => m.id === id? {...m, taken:!m.taken} : m)); };
+      const addSymptom = (level, note) => {
+        setSymptoms([{id: Date.now(), date: new Date().toLocaleDateString('es-AR'), level, note},...symptoms]);
+        setShowModal(false);
+      };
 
-      if (screen === 'home') return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
-          <div className="max-w-md mx-auto">
-            <h1 className="text-3xl font-bold text-center mb-2 mt-4 text-gray-800">Mi Bienestar 💙</h1>
-            <p className="text-center text-gray-600 mb-6">Tu compañero diario</p>
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <button onClick={() => setScreen('sintomas')} className="bg-white p-6 rounded-2xl shadow-md"><TrendingUp className="w-10 h-10 text-blue-500 mb-3 mx-auto" /><div className="font-bold text-gray-700">Síntomas</div><div className="text-sm text-gray-500">{symptoms.length} registros</div></button>
-              <button onClick={() => setScreen('animo')} className="bg-white p-6 rounded-2xl shadow-md"><Smile className="w-10 h-10 text-yellow-500 mb-3 mx-auto" /><div className="font-bold text-gray-700">Ánimo</div><div className="text-sm text-gray-500">{mood.length} registros</div></button>
-              <button onClick={() => setScreen('meds')} className="bg-white p-6 rounded-2xl shadow-md"><Pill className="w-10 h-10 text-green-500 mb-3 mx-auto" /><div className="font-bold text-gray-700">Medicamentos</div><div className="text-sm text-gray-500">{medications.length} activos</div></button>
-              <button onClick={() => setScreen('record')} className="bg-white p-6 rounded-2xl shadow-md"><Bell className="w-10 h-10 text-purple-500 mb-3 mx-auto" /><div className="font-bold text-gray-700">Recordatorios</div><div className="text-sm text-gray-500">{reminders.length} activos</div></button>
-            </div>
-          </div>
-        </div>
-      );
+      const addMood = (level, note) => {
+        setMood([{id: Date.now(), date: new Date().toLocaleDateString('es-AR'), level, note},...mood]);
+        setShowModal(false);
+      };
 
-      if (screen === 'sintomas') return (<div className="min-h-screen bg-gray-50 p-4"><div className="max-w-md mx-auto"><div className="flex justify-between mb-4"><button onClick={() => setScreen('home')} className="text-blue-600">← Volver</button><button onClick={() => {setModalType('sintoma'); setShowModal(true);}} className="bg-blue-500 text-white px-4 py-2 rounded-lg flex gap-2"><Plus className="w-4 h-4" /> Agregar</button></div><h2 className="text-xl font-bold mb-4">Síntomas</h2>{symptoms.length === 0? <div className="bg-white p-6 rounded-xl text-center text-gray-500">No hay registros</div> : <div className="space-y-3">{symptoms.map(s => <div key={s.id} className="bg-white p-4 rounded-xl shadow"><div className="flex justify-between mb-2"><span className="font-semibold">Nivel: {s.level}/10</span><span className="text-sm text-gray-500">{s.date}</span></div><p className="text-gray-600 text-sm">{s.note}</p></div>)}</div>}{showModal && modalType === 'sintoma' && <Modal onClose={() => setShowModal(false)} onSave={(l,n) => addSymptom(l,n)} title="Nuevo Síntoma" />}</div></div>);
-      if (screen === 'animo') return (<div className="min-h-screen bg-gray-50 p-4"><div className="max-w-md mx-auto"><div className="flex justify-between mb-4"><button onClick={() => setScreen('home')} className="text-blue-600">← Volver</button><button onClick={() => {setModalType('animo'); setShowModal(true);}} className="bg-yellow-500 text-white px-4 py-2 rounded-lg flex gap-2"><Plus className="w-4 h-4" /> Agregar</button></div><h2 className="text-xl font-bold mb-4">Ánimo</h2>{mood.length === 0? <div className="bg-white p-6 rounded-xl text-center text-gray-500">No hay registros</div> : <div className="space-y-3">{mood.map(m => <div key={m.id} className="bg-white p-4 rounded-xl shadow"><div className="flex justify-between mb-2"><span className="font-semibold">Ánimo: {m.level}/10</span><span className="text-sm text-gray-500">{m.date}</span></div><p className="text-gray-600 text-sm">{m.note}</p></div>)}</div>}{showModal && modalType === 'animo' && <Modal onClose={() => setShowModal(false)} onSave={(l,n) => addMood(l,n)} title="Cómo te sentís" />}</div></div>);
-      if (screen === 'meds') return (<div className="min-h-screen bg-gray-50 p-4"><div className="max-w-md mx-auto"><div className="flex justify-between mb-4"><button onClick={() => setScreen('home')} className="text-blue-600">← Volver</button><button onClick={() => {setModalType('med'); setShowModal(true);}} className="bg-green-500 text-white px-4 py-2 rounded-lg flex gap-2"><Plus className="w-4 h-4" /> Agregar</button></div><h2 className="text-xl font-bold mb-4">Medicamentos</h2>{medications.length === 0? <div className="bg-white p-6 rounded-xl text-center text-gray-500">No hay medicamentos</div> : <div className="space-y-3">{medications.map(m => <div key={m.id} onClick={() => toggleMed(m.id)} className={bg-white p-4 rounded-xl shadow cursor-pointer ${m.taken? 'opacity-50' : ''}}><div className="flex justify-between"><div><div className="font-semibold">{m.name}</div><div className="text-sm text-gray-500">{m.time}</div></div><div className={w-6 h-6 rounded-full border-2 ${m.taken? 'bg-green-500 border-green-500' : 'border-gray-300'}}></div></div></div>)}</div>}{showModal && modalType === 'med' && <MedModal onClose={() => setShowModal(false)} onSave={(n,t) => addMedication(n,t)} />}</div></div>);
-      return (<div className="min-h-screen bg-gray-50 p-4"><div className="max-w-md mx-auto"><button onClick={() => setScreen('home')} className="mb-4 text-blue-600">← Volver</button><h2 className="text-xl font-bold mb-4">Recordatorios</h2><div className="bg-white p-6 rounded-xl text-center text-gray-500">Próximamente</div></div></div>);
-    }
+      const addMedication = (name, time) => {
+        setMedications([{id: Date.now(), name, time, taken: false},...medications]);
+        setShowModal(false);
+      };
 
-    function Modal({onClose, onSave, title}) { const [level, setLevel] = useState(5); const [note, setNote] = useState(''); return (<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"><div className="bg-white rounded-2xl p-6 w-full max-w-sm"><div className="flex justify-between mb-4"><h3 className="text-lg font-bold">{title}</h3><button onClick={onClose}><X className="w-5 h-5" /></button></div><label className="block mb-2 text-sm font-medium">Nivel: {level}</label><input type="range" min="1" max="10" value={level} onChange={e => setLevel(e.target.value)} className="w-full mb-4" /><textarea placeholder="Notas..." value={note} onChange={e => setNote(e.target.value)} className="w-full p-3 border rounded-lg mb-4" rows="3"></textarea><button onClick={() => onSave(level, note)} className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2"><Save className="w-4 h-4" /> Guardar</button></div></div>); }
-    function MedModal({onClose, onSave}) { const [name, setName] = useState(''); const [time, setTime] = useState('08:00'); return (<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"><div className="bg-white rounded-2xl p-6 w-full max-w-sm"><div className="flex justify-between mb-4"><h3 className="text-lg font-bold">Nuevo Medicamento</h3><button onClick={onClose}><X className="w-5 h-5" /></button></div><input placeholder="Nombre" value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border rounded-lg mb-3" /><input type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full p-3 border rounded-lg mb-4" /><button onClick={() => name && onSave(name, time)} className="w-full bg-green-500 text-white py-3 rounded-lg font-semibold">Guardar</button></div></div>); }
+      const toggleMed = (id) => {
+        setMedications(medications.map(m => m.id === id? {...m, taken:!m.taken} : m));
+      };
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
-</body>
-</html>
+      if (screen === 'home') {
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
+            <div className="max-w-md mx-auto">
+              <h1 className="text-3xl font-bold text-center mb-2 mt-4
