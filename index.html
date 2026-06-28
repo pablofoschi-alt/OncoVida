@@ -1,81 +1,62 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Bienestar - OncoVida</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#2563EB"/>
+<title>Mi Bienestar</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:-apple-system,system-ui,sans-serif;background:#F0F4FF;-webkit-font-smoothing:antialiased}
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;width:100%;height:36px;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid #2563EB;box-shadow:0 2px 8px rgba(37,99,235,.3)}
+textarea,input,select{font-family:inherit}
+textarea:focus,input:focus,select:focus{outline:none;border-color:#2563EB!important;box-shadow:0 0 0 3px rgba(37,99,235,.15)!important}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.up{animation:up .3s ease both}
+.fi{animation:fi .2s ease both}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:#3B82F644;border-radius:4px}
+</style>
 </head>
 <body>
-  <div id="root"></div>
-
-  <script type="text/babel">
-    const { useState, useEffect } = React;
-    const { Plus, Bell, BarChart3, Calendar, Heart, Pill, Smile, TrendingUp, X, Save } = lucideReact;
-
-    const STORAGE_KEYS = {
-      symptoms: 'onco_sintomas',
-      mood: 'onco_animo',
-      medications: 'onco_meds',
-      reminders: 'onco_reminders'
-    };
-
-    function App() {
-      const [screen, setScreen] = useState('home');
-      const [symptoms, setSymptoms] = useState(JSON.parse(localStorage.getItem(STORAGE_KEYS.symptoms) || '[]'));
-      const [mood, setMood] = useState(JSON.parse(localStorage.getItem(STORAGE_KEYS.mood) || '[]'));
-      const [medications, setMedications] = useState(JSON.parse(localStorage.getItem(STORAGE_KEYS.medications) || '[]'));
-      const [reminders, setReminders] = useState(JSON.parse(localStorage.getItem(STORAGE_KEYS.reminders) || '[]'));
-      const [showModal, setShowModal] = useState(false);
-      const [modalType, setModalType] = useState('');
-
-      useEffect(() => { localStorage.setItem(STORAGE_KEYS.symptoms, JSON.stringify(symptoms)); }, [symptoms]);
-      useEffect(() => { localStorage.setItem(STORAGE_KEYS.mood, JSON.stringify(mood)); }, [mood]);
-      useEffect(() => { localStorage.setItem(STORAGE_KEYS.medications, JSON.stringify(medications)); }, [medications]);
-      useEffect(() => { localStorage.setItem(STORAGE_KEYS.reminders, JSON.stringify(reminders)); }, [reminders]);
-
-      const addSymptom = (level, note) => {
-        setSymptoms([{id: Date.now(), date: new Date().toLocaleDateString('es-AR'), level, note},...symptoms]);
-        setShowModal(false);
-      };
-
-      const addMood = (level, note) => {
-        setMood([{id: Date.now(), date: new Date().toLocaleDateString('es-AR'), level, note},...mood]);
-        setShowModal(false);
-      };
-
-      const addMedication = (name, time) => {
-        setMedications([{id: Date.now(), name, time, taken: false},...medications]);
-        setShowModal(false);
-      };
-
-      const toggleMed = (id) => {
-        setMedications(medications.map(m => m.id === id? {...m, taken:!m.taken} : m));
-      };
-
-      if (screen === 'home') {
-        return (
-          <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
-            <div className="max-w-md mx-auto">
-              <h1 className="text-3xl font-bold text-center mb-2 mt-4 text-gray-800">Mi Bienestar 💙</h1>
-              <p className="text-center text-gray-600 mb-6">Tu compañero diario</p>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <button onClick={() => setScreen('sintomas')} className="bg-white p-6 rounded-2xl shadow-md hover:shadow-xl transition-all">
-                  <TrendingUp className="w-10 h-10 text-blue-500 mb-3 mx-auto" />
-                  <div className="font-bold text-gray-700">Síntomas</div>
-                  <div className="text-sm text-gray-500">{symptoms.length} registros</div>
-                </button>
-                <button onClick={() => setScreen('animo')} className="bg-white p-6 rounded-2xl shadow-md hover:shadow-xl transition-all">
-                  <Smile className="w-10 h-10 text-yellow-500 mb-3 mx-auto" />
-                  <div className="font-bold text-gray-700">Ánimo</div>
-                  <div className="text-sm text-gray-500">{mood.length} registros</div>
-                </button>
-                <button onCli
+<div id="app"></div>
+<script>
+const SYMS=[
+  {id:"nausea",label:"Náuseas",icon:"🤢"},
+  {id:"fatigue",label:"Fatiga",icon:"😴"},
+  {id:"pain",label:"Dolor",icon:"💢"},
+  {id:"appetite",label:"Falta de apetito",icon:"🍽️"},
+  {id:"headache",label:"Dolor de cabeza",icon:"🤕"},
+  {id:"anxiety",label:"Ansiedad",icon:"😰"},
+  {id:"sleep",label:"Problemas de sueño",icon:"🌙"},
+  {id:"mouth",label:"Llagas en la boca",icon:"💊"},
+];
+const ILABELS=["Sin molestia","Leve","Moderado","Intenso","Muy intenso"];
+const MOODS=["😢","😕","😐","🙂","😊"];
+const MLABELS=["Muy mal","Mal","Regular","Bien","Excelente"];
+const ICOLORS=["#22C55E","#84CC16","#F59E0B","#F97316","#EF4444"];
+const ic=v=>ICOLORS[v]||ICOLORS[0];
+const SK={rec:"mb_rec",prem:"mb_prem",pat:"mb_pat",ob:"mb_ob",dark:"mb_dark",meds:"mb_meds"};
+function ld(k,fb){try{const r=localStorage.getItem(k);if(!r)return fb;const p=JSON.parse(r);if(Array.isArray(p)&&p[0]?.date)return p.map(x=>({...x,date:new Date(x.date)}));return p;}catch{return fb;}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+const state={
+  onboarded:ld(SK.ob,false),isPremium:ld(SK.prem,false),
+  patient:ld(SK.pat,"Mi paciente")||"Mi paciente",
+  records:ld(SK.rec,[]),dark:ld(SK.dark,false),meds:ld(SK.meds,[]),
+  tab:0,symptoms:Object.fromEntries(SYMS.map(s=>[s.id,{intensity:0,note:""}])),
+  mood:3,toast:null,showPremium:false,obStep:0,obName:"",
+  editMedIdx:null,showMedForm:false,
+  medForm:{name:"",dose:"",time:"08:00",freq:"Una vez al día",notes:"",active:true},
+  reportCopied:false,
+};
+function setState(patch){Object.assign(state,typeof patch==='function'?patch(state):patch);render();}
+function T(){return state.dark?{bg:"#0F172A",sur:"#1E293B",sur2:"#273349",brd:"#334155",ink:"#F1F5F9",ink2:"#94A3B8",ink3:"#64748B",blue:"#3B82F6",bl:"#1E3A5F",sh:"0 4px 20px rgba(0,0,0,.4)",inp:"#0F172A"}:{bg:"#F0F4FF",sur:"#FFFFFF",sur2:"#F8FAFF",brd:"#E2E8F0",ink:"#0F172A",ink2:"#475569",ink3:"#94A3B8",blue:"#2563EB",bl:"#EFF6FF",sh:"0 2px 16px rgba(37,99,235,.07)",inp:"#F8FAFF"};}
+function h(tag,attrs,...children){const el=document.createElement(tag);if(attrs)Object.entries(attrs).forEach(([k,v])=>{if(k==='style'&&typeof v==='object')Object.assign(el.style,v);else if(k.startsWith('on'))el.addEventListener(k.slice(2).toLowerCase(),v);else if(k==='className')el.className=v;else el.setAttribute(k,v);});children.flat(Infinity).forEach(c=>{if(c==null||c===false)return;el.appendChild(typeof c==='string'||typeof c==='number'?document.createTextNode(String(c)):c);});return el;}
+function showToast(msg,color="#22C55E",icon="✅"){setState({toast:{msg,color,icon}});setTimeout(()=>setState({toast:null}),2800);}
+const OB=[{icon:"💙",title:"Tu bienestar, en tus manos",body:"Registra
+function renderPremiumModal(){const t=T();const perks=[["🤖","IA analiza tus síntomas"],["📊","Gráficas de evolución"],["📄","Reporte para tu oncólogo"],["💊","Seguimiento de medicamentos"],["🔔","Recordatorios personalizados"]];return h('div',{style:{position:"fixed",inset:"0",background:"rgba(0,0,0,.6)",zIndex:"200",display:"flex",alignItems:"flex-end",justifyContent:"center"},onClick:e=>{if(e.target===e.currentTarget)setState({showPremium:false});}},h('div',{className:"up",style:{background:t.sur,borderRadius:"24px 24px 0 0",padding:"0 24px 36px",width:"100%",maxWidth:"480px",maxHeight:"90vh",overflowY:"auto"}},h('div',{style:{width:"40px",height:"4px",background:t.brd,borderRadius:"2px",margin:"14px auto 20px"}}),h('div',{style:{textAlign:"center",marginBottom:"20px"}},h('div',{style:{fontSize:"52px",marginBottom:"8px"}},"⭐"),h('h2',{style:{margin:"0",fontSize:"22px",fontWeight:"800",color:t.ink}},"Plan Premium"),h('p',{style:{margin:"6px 0 0",color:t.ink2,fontSize:"14px"}},"Todo lo que necesitas")),...perks.map(([icon,text])=>h('div',{style:{display:"flex",alignItems:"center",gap:"12px",padding:"10px 14px",background:t.bl,borderRadius:"12px",marginBottom:"8px"}},h('span',{style:{fontSize:"20px"}},icon),h('span',{style:{fontSize:"14px",color:t.ink,fontWeight:"500"}},text))),h('div',{style:{background:t.sur2,borderRadius:"14px",padding:"16px",textAlign:"center",margin:"16px 0",border:1px solid ${t.brd}}},h('div',{style:{fontSize:"32px",fontWeight:"900",color:t.blue}},"$6.99",h('span',{style:{fontSize:"14px",fontWeight:"500",color:t.ink2}},"/mes")),h('div',{style:{fontSize:"12px",color:t.ink3,marginTop:"2px"}},"7 días gratis · Cancela cuando quieras")),h('button',{style:{width:"100%",padding:"14px",background:linear-gradient(135deg,${t.blue},#3B82F6),color:"#fff",border:"none",borderRadius:"12px",fontSize:"15px",fontWeight:"700",cursor:"pointer",marginBottom:"10px"},onClick:()=>{sv(SK.prem,true);setState({isPremium:true,showPremium:false,tab:3});showToast("¡Premium activado! 🎉","#2563EB","⭐");}},"Activar prueba gratuita"),h('button',{style:{display:"block",width:"100%",padding:"10px",background:"transparent",color:t.ink3,border:"none",fontSize:"14px",cursor:"pointer"},onClick:()=>setState({showPremium:false})},"Ahora no")));}
+function renderHoy(){const t=T();const activeCount=Object.values(state.symptoms).filter(s=>s.intensity>0).length;return h('div',{className:"fi"},h('div',{style:{background:t.sur,borderRadius:"16px",padding:"20px",marginBottom:"14px",boxShadow:t.sh,border:1px solid ${t.brd}}},h('div',{style:{fontSize:"14px",fontWeight:"600",color:t.ink,marginBottom:"14px"}},"¿Cómo te sientes en general?"),h('div',{style:{display:"flex",justifyContent:"space-around",marginBottom:"8px"}},...MOODS.map((m,i)=>h('button',{style:{fontSize:"28px",border:"none",cursor:"pointer",background:state.mood===i?t.bl:"transparent",borderRadius:"12px",padding:"8px 10px",transform:state.mood===i?"scale(1.25)":"scale(1)",transition:"all .2s",outline:state.mood===i?2px solid ${t.blue}:"none"},onClick:()=>setState({mood:i})},m))),h('div',{style:{textAlign:"center",fontSize:"13px",fontWeight:"700",color:t.blue}},MLABELS[state.mood])),activeCount>0?h('div',{style:{background:t.bl,borderRadius:"10px",padding:"9px 14px",marginBottom:"12px",fontSize:"13px",color:t.blue,fontWeight:"600"}},💊 ${activeCount} síntoma${activeCount>1?"s":""} registrado${activeCount>1?"s":""}):null,...SYMS.map(s=>renderSymCard(s)),!state.isPremium?h('div',{style:{background:"#EFF6FF",borderRadius:"14px",padding:"14px 16px",marginBottom:"16px",border:"1.5px dashed #2563EB44",display:"flex",gap:"12px",alignItems:"center",marginTop:"10px"}},h('span',{style:{fontSize:"28px"}},"🤖"),h('div',{style:{flex:"1"}},h('div',{style:{fontSize:"13px",fontWeight:"700",color:t.ink}},"Análisis con IA"),h('div',{style:{fontSize:"12px",color:t.ink2,marginTop:"2px"}},"Orientación personalizada con Premium")),h('button',{style:{background:linear-gradient(135deg,${t.blue},#3B82F6),color:"#fff",border:"none",borderRadius:"8px",padding:"7px 12px
